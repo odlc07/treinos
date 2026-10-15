@@ -40,9 +40,18 @@ tem fundo branco, e no tema escuro ela viraria um retângulo branco no meio da t
 alfa, o objeto flutua sobre o card nos dois temas, e a sombra é feita em CSS
 (`--fotoshadow`), que acompanha a silhueta e se ajusta ao tema.
 
-Para preparar uma imagem nova: recorte o fundo (o iOS faz isso em Fotos, segurando o
-dedo no objeto → *Copiar Assunto*), salve como WebP ou PNG em `gear/`, e escreva o nome do
-arquivo no campo **Imagem** ao editar o equipamento.
+Para acrescentar uma imagem:
+
+1. Recorte o fundo (o iOS faz em Fotos, segurando o dedo no objeto → *Copiar Assunto*).
+2. Salve como WebP em `gear/` — WebP com alfa pesa cerca de 1/5 do PNG equivalente.
+3. Acrescente uma linha em `MEDIAS`, no topo do script:
+   `{arq:'nomedoarquivo', nome:'Como aparece na lista'}`
+4. `git push`, e o nome passa a aparecer no campo **Imagem** do equipamento.
+
+O passo 3 existe porque hospedagem estática não permite listar um diretório: a página
+não tem como descobrir sozinha o que há em `gear/`, então o índice é explícito. Um
+equipamento que aponte para um arquivo fora da lista continua funcionando e aparece
+marcado como *não listado* — editar outro campo não apaga a imagem sem você pedir.
 
 ### Quando virar 3D
 
