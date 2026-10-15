@@ -22,7 +22,7 @@ Endereço depois do deploy: `https://odlc07.github.io/treinos/`
 |---|---|
 | **Painel** | tempo da semana, volume das últimas 8 semanas, totais e avisos de troca |
 | **Treinos** | histórico por mês, filtrável por esporte; toque num treino para editar |
-| **Equipamentos** | tênis e bicicletas com a quilometragem acumulada |
+| **Equipamentos** | vitrine: foto grande de cada tênis e bike, com a quilometragem embaixo |
 | **Detalhe** | toque num equipamento: foto, números e os treinos feitos com ele |
 | **Ajustes** | metas semanais, sincronização, backup |
 

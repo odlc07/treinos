@@ -152,6 +152,19 @@
   .thumb{width:46px;height:46px;flex:none;border-radius:11px;background:var(--bg);
          display:grid;place-items:center;overflow:hidden}
   .thumb img{max-width:92%;max-height:92%;object-fit:contain}
+
+  /* lista de equipamentos: a foto manda, o número é a legenda dela.
+     Altura fixa para os cards ficarem alinhados mesmo com proporções
+     diferentes — tênis é largo e baixo, bike é quase quadrada. */
+  .gfoto{display:flex;align-items:center;justify-content:center;height:160px;margin-bottom:12px}
+  .gfoto img{max-width:100%;max-height:160px;object-fit:contain;filter:var(--fotoshadow)}
+  /* sem foto, o card encolhe: reservar os mesmos 160px deixaria um buraco */
+  .gvazio{display:flex;align-items:center;justify-content:center;height:78px;
+          margin-bottom:10px;font-size:34px;opacity:.35}
+  .gnome{font-weight:650;font-size:17px;letter-spacing:-.3px;
+         white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gkm{font-size:26px;font-weight:700;letter-spacing:-.9px;line-height:1.15;margin-top:1px}
+  .gkm span{font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0}
   .voltar{display:inline-flex;align-items:center;gap:5px;background:none;border:0;
           color:var(--accent);font-weight:600;font-size:13.5px;padding:2px 0 10px}
   .fatos{display:grid;grid-template-columns:1fr 1fr;gap:11px 14px;margin-top:4px}
@@ -221,14 +234,9 @@
   </section>
 
   <section id="v-equip">
-    <div class="card">
-      <div class="row between">
-        <h2 style="margin:0">Equipamentos</h2>
-        <button class="primary mini" onclick="openGear()">+ Novo</button>
-      </div>
-      <p class="tiny muted" style="margin:8px 0 0">
-        A quilometragem soma sozinha a cada treino que você marcar com o equipamento.
-      </p>
+    <div class="row between" style="margin:0 2px 12px">
+      <h2 style="margin:0;font-size:15px">Equipamentos</h2>
+      <button class="primary mini" onclick="openGear()">+ Novo</button>
     </div>
     <div id="gearList"></div>
   </section>
@@ -811,37 +819,38 @@ function previewMedia(){
 function renderGear(){
   var el=document.getElementById('gearList');
   if(!db.gear.length){
+    /* a explicação vive aqui, não num card fixo: depois do primeiro cadastro
+       ela só empurraria as fotos para baixo */
     el.innerHTML='<div class="card"><div class="empty">Nenhum equipamento cadastrado.<br><br>'+
-      '<button class="primary" onclick="openGear()">Cadastrar tênis ou bike</button></div></div>';
+      '<button class="primary" onclick="openGear()">Cadastrar tênis ou bike</button>'+
+      '<div class="tiny" style="margin-top:14px">A quilometragem soma sozinha a cada '+
+      'treino que você marcar com o equipamento.</div></div></div>';
     return;
   }
+  /* Card de vitrine: foto grande, nome e km. Contagem de treinos, data de
+     início e meta de troca ficam no detalhe — aqui elas só competiriam com a
+     imagem, que é o que identifica o equipamento num relance. */
   function card(g){
-    var k=gearKm(g), n=gearRuns(g);
+    var k=gearKm(g);
     var pct=g.limitKm? Math.min(100,k/g.limitKm*100) : 0;
     var col=!g.limitKm? SPORT[KIND[g.kind].sport].color
             : pct>=100? 'var(--bad)' : pct>=80? 'var(--warn)' : SPORT[KIND[g.kind].sport].color;
-    var thumb = g.media
-      ? '<div class="thumb"><img src="'+midiaURL(g.media)+'" alt=""'+
-        ' onerror="this.style.display=\'none\'"></div>'
-      : '<div class="thumb"><span style="font-size:20px">'+KIND[g.kind].icon+'</span></div>';
+    var foto = g.media
+      ? '<div class="gfoto"><img src="'+midiaURL(g.media)+'" alt="'+esc(g.name)+'" '+
+        'loading="lazy" onerror="this.parentNode.className=\'gvazio\';'+
+        'this.parentNode.textContent=\''+KIND[g.kind].icon+'\'"></div>'
+      : '<div class="gvazio">'+KIND[g.kind].icon+'</div>';
     return '<div class="card tap" onclick="openGearDetail(\''+g.id+'\')">'+
-      '<div class="row between" style="align-items:flex-start">'+
-        '<div class="row" style="gap:11px;min-width:0">'+ thumb +
-          '<div style="min-width:0">'+
-          '<div style="font-weight:650;font-size:15.5px;letter-spacing:-.2px">'+esc(g.name)+'</div>'+
-          '<div class="tiny muted">'+n+(n===1?' treino':' treinos')+
-            (g.since? ' · desde '+fmtY(g.since):'')+
-            (g.baseKm? ' · '+dec(g.baseKm,0)+' km de partida':'')+'</div>'+
-        '</div></div>'+
-        '<button class="mini ghost" onclick="event.stopPropagation();openGear(\''+g.id+'\')">Editar</button>'+
-      '</div>'+
-      '<div class="row between" style="align-items:flex-end;margin-top:10px">'+
-        '<div class="big">'+dec(k,1)+' <span style="font-size:13px;font-weight:500;color:var(--muted)">km</span></div>'+
+      foto+
+      '<div class="row between" style="align-items:flex-end;gap:10px">'+
+        '<div style="min-width:0">'+
+          '<div class="gnome">'+esc(g.name)+'</div>'+
+          '<div class="gkm">'+dec(k,1)+' <span>km</span></div>'+
+        '</div>'+
         (g.limitKm? '<span class="badge '+(pct>=100?'b-bad':pct>=80?'b-warn':'b-ok')+'">'+
             (pct>=100? 'trocar' : pct>=80? 'perto do fim' : Math.round(g.limitKm-k)+' km restantes')+'</span>':'')+
       '</div>'+
-      (g.limitKm? '<div class="meter" style="--mc:'+col+'"><i style="width:'+pct+'%"></i></div>'+
-        '<div class="tiny muted">meta de troca: '+dec(g.limitKm,0)+' km</div>':'')+
+      (g.limitKm? '<div class="meter" style="--mc:'+col+'"><i style="width:'+pct+'%"></i></div>':'')+
     '</div>';
   }
   var active=db.gear.filter(function(g){return !g.retired;});
