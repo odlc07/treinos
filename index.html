@@ -1,0 +1,1235 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Treinos</title>
+<meta name="description" content="Corrida, natação e bike — volume e quilometragem dos equipamentos">
+<meta name="theme-color" content="#111318">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Treinos">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%8F%83%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --ink:#14171c; --muted:#6b727e;
+    --line:#e3e6ea; --accent:#4a3aa7; --accent-ink:#ffffff;
+    --ok:#1f9d5b; --warn:#d98518; --bad:#d63a3a;
+    /* séries — validadas em todos os pares, nos dois modos (ΔE CVD 9.2, normal 24.0) */
+    --run:#eb6834; --swim:#2a78d6; --bike:#1baf7a;
+    --shadow:0 1px 2px rgba(16,20,30,.06), 0 6px 18px rgba(16,20,30,.06);
+    /* sombra do objeto recortado: segue a silhueta, não é um retângulo */
+    --fotoshadow:drop-shadow(0 7px 11px rgba(10,14,20,.20));
+    --radius:16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f1115; --card:#181b21; --ink:#e9ecf1; --muted:#98a0ad;
+      --line:#272c34; --accent:#9085e9; --accent-ink:#14171c;
+      --ok:#3fbd7c; --warn:#e0a33f; --bad:#ec6a6a;
+      --run:#d95926; --swim:#3987e5; --bike:#199e70;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
+      --fotoshadow:drop-shadow(0 8px 14px rgba(0,0,0,.55));
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:calc(76px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px}
+  header{
+    position:sticky;top:0;z-index:20;background:var(--bg);
+    padding:calc(14px + env(safe-area-inset-top)) 0 10px;
+    border-bottom:1px solid var(--line);
+  }
+  header h1{margin:0;font-size:19px;letter-spacing:-.3px}
+  header .sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+  main{padding-top:14px}
+  section{display:none}
+  section.on{display:block}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+        box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+  .card h2{margin:0 0 10px;font-size:15px}
+  .row{display:flex;align-items:center;gap:10px}
+  .between{justify-content:space-between}
+  .wrapf{flex-wrap:wrap}
+  .muted{color:var(--muted)}
+  .small{font-size:12.5px}
+  .tiny{font-size:11.5px}
+
+  /* número herói — um por tela, no card da semana */
+  .hero{font-size:40px;font-weight:700;letter-spacing:-1.6px;line-height:1}
+  .big{font-size:26px;font-weight:700;letter-spacing:-1px;line-height:1.1}
+  .badge{font-size:11.5px;font-weight:650;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .b-ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+  .b-warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+  .b-bad{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+
+  /* ladrilhos: ponto colorido ao lado do texto — nunca texto na cor da série */
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+  .tile{border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:var(--bg)}
+  .tile .lb{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tile .vl{font-weight:650;font-size:15px;margin-top:3px;letter-spacing:-.3px}
+  .tile .dl{font-size:10.5px;color:var(--muted);margin-top:1px}
+  .key{width:9px;height:9px;border-radius:50%;flex:none}
+
+  /* volume: colunas empilhadas, 2px de respiro na cor da superfície */
+  .chart{display:flex;align-items:flex-end;gap:5px;height:124px;position:relative;margin-top:6px}
+  .gridline{position:absolute;left:0;right:0;height:1px;background:var(--line)}
+  .colwrap{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;
+        border-radius:7px;padding:2px;cursor:pointer;min-width:0;border:0;background:none}
+  .colwrap.sel{background:color-mix(in srgb,var(--accent) 11%,transparent)}
+  .col{display:flex;flex-direction:column;justify-content:flex-end;gap:2px;max-width:24px;
+        width:100%;margin:0 auto}
+  .col i{display:block;width:100%}
+  .col i:first-child{border-radius:4px 4px 0 0}
+  .xaxis{display:flex;gap:5px;margin-top:6px}
+  .xaxis div{flex:1;text-align:center;font-size:10px;color:var(--muted);min-width:0;
+        font-variant-numeric:tabular-nums}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .readout{border-top:1px solid var(--line);margin-top:11px;padding-top:10px}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:right;font-size:10.5px;color:var(--muted);font-weight:600;padding:0 0 6px}
+  th:first-child{text-align:left}
+  td{padding:8px 0;border-top:1px solid var(--line);text-align:right;
+     font-variant-numeric:tabular-nums}
+  td:first-child{text-align:left;font-variant-numeric:normal}
+  td b{font-weight:650}
+  td .u{display:block;font-size:10.5px;color:var(--muted);font-variant-numeric:normal}
+  .tscroll{overflow-x:auto}
+
+  button,.btn{font:inherit;cursor:pointer;border-radius:11px;border:1px solid var(--line);
+        background:var(--card);color:var(--ink);padding:9px 13px;transition:.12s}
+  button:active{transform:scale(.97)}
+  .primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  .danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,var(--line))}
+  .ghost{background:transparent}
+  .mini{padding:6px 10px;font-size:12.5px;border-radius:9px}
+
+  label{display:block;font-size:12.5px;color:var(--muted);margin:10px 0 4px;font-weight:600}
+  input,select,textarea{font:inherit;width:100%;padding:10px 11px;border-radius:11px;
+        border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+  /* seletor de esporte */
+  .sports{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+  .sport{border:1px solid var(--line);border-radius:12px;padding:10px 4px;background:var(--bg);
+        text-align:center;font-size:12px;font-weight:600;line-height:1.3;color:var(--ink)}
+  .sport b{display:block;font-size:21px;font-weight:400;margin-bottom:3px}
+  .sport.on{border-color:var(--sc);background:color-mix(in srgb,var(--sc) 14%,transparent);
+        box-shadow:inset 0 0 0 1px var(--sc)}
+
+  /* esforço percebido 1–5 */
+  .efforts{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:6px}
+  .eff{border:1px solid var(--line);border-radius:10px;padding:9px 0;background:var(--bg);
+       font-weight:650;font-size:13.5px}
+  .eff.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+  .calc{margin-top:12px;padding:10px 11px;border-radius:11px;background:var(--bg);
+        border:1px dashed var(--line);font-size:12.5px;color:var(--muted);text-align:center}
+  .calc b{color:var(--ink);font-size:14px}
+
+  /* medidor de quilometragem: trilha = passo claro da mesma cor do preenchimento */
+  .meter{height:9px;border-radius:99px;overflow:hidden;margin:10px 0 7px;
+         background:color-mix(in srgb,var(--mc,var(--accent)) 16%,transparent)}
+  .meter i{display:block;height:100%;background:var(--mc,var(--accent))}
+
+  /* palco da mídia do equipamento. O PNG é recortado com alfa, então o objeto
+     flutua sobre o card em vez de trazer um retângulo branco para o tema escuro. */
+  .palco{display:flex;align-items:center;justify-content:center;
+         padding:20px 14px;min-height:172px;overflow:hidden}
+  .palco img{width:100%;max-width:430px;height:auto;display:block;filter:var(--fotoshadow)}
+  .semfoto{text-align:center;color:var(--muted);font-size:12.5px;padding:22px 10px;line-height:1.6}
+  .semfoto b{display:block;font-size:30px;margin-bottom:6px;opacity:.5}
+  .thumb{width:46px;height:46px;flex:none;border-radius:11px;background:var(--bg);
+         display:grid;place-items:center;overflow:hidden}
+  .thumb img{max-width:92%;max-height:92%;object-fit:contain}
+  .voltar{display:inline-flex;align-items:center;gap:5px;background:none;border:0;
+          color:var(--accent);font-weight:600;font-size:13.5px;padding:2px 0 10px}
+  .fatos{display:grid;grid-template-columns:1fr 1fr;gap:11px 14px;margin-top:4px}
+  .fato b{display:block;font-size:15px;font-weight:650;letter-spacing:-.2px}
+  .fato span{font-size:11.5px;color:var(--muted)}
+
+  .item{display:flex;justify-content:space-between;align-items:center;gap:10px;
+        padding:10px 0;border-bottom:1px solid var(--line)}
+  .item:last-child{border-bottom:0}
+  .tap{cursor:pointer}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .mhead{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;
+         text-transform:uppercase;margin:16px 0 0}
+  .filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{border:1px solid var(--line);background:var(--card);border-radius:999px;
+        padding:6px 13px;font-size:12.5px;color:var(--ink)}
+  .chip.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent);
+        font-weight:600}
+
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);
+      border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+  nav button{flex:1;border:0;background:none;border-radius:0;padding:9px 2px 10px;
+      color:var(--muted);font-size:10.5px;display:flex;flex-direction:column;align-items:center;gap:3px}
+  nav button.on{color:var(--accent)}
+  nav svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;
+      stroke-linecap:round;stroke-linejoin:round}
+
+  .fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:31;
+      background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;
+      padding:13px 18px;font-weight:650;
+      box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 45%,transparent)}
+
+  .sheet{position:fixed;inset:0;z-index:50;background:rgba(8,10,14,.5);
+      display:none;align-items:flex-end;justify-content:center}
+  .sheet.on{display:flex}
+  .sheet .panel{background:var(--card);width:100%;max-width:760px;
+      border-radius:20px 20px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));
+      max-height:90vh;overflow:auto}
+  @media(min-width:760px){.sheet{align-items:center}.sheet .panel{border-radius:20px}}
+  .sheet h3{margin:0 0 4px;font-size:17px}
+  .empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:13.5px}
+  .warnbox{background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn);
+      border-radius:11px;padding:9px 11px;font-size:12.5px;margin-top:10px}
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+  <div class="row between">
+    <div>
+      <h1>Treinos</h1>
+      <div class="sub" id="weekInfo"></div>
+    </div>
+    <div class="tiny" id="syncPill" style="text-align:right"></div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <section id="v-painel" class="on">
+    <div id="painel"></div>
+  </section>
+
+  <section id="v-treinos">
+    <div class="filters" id="filters"></div>
+    <div id="histList"></div>
+  </section>
+
+  <section id="v-equip">
+    <div class="card">
+      <div class="row between">
+        <h2 style="margin:0">Equipamentos</h2>
+        <button class="primary mini" onclick="openGear()">+ Novo</button>
+      </div>
+      <p class="tiny muted" style="margin:8px 0 0">
+        A quilometragem soma sozinha a cada treino que você marcar com o equipamento.
+      </p>
+    </div>
+    <div id="gearList"></div>
+  </section>
+
+  <section id="v-equipdet">
+    <button class="voltar" onclick="go('equip')">‹ Equipamentos</button>
+    <div id="gearDet"></div>
+  </section>
+
+  <section id="v-ajustes">
+    <div class="card">
+      <h2>Metas semanais</h2>
+      <p class="small muted" style="margin-top:0">Deixe em zero para não acompanhar meta naquele esporte.</p>
+      <div class="grid3">
+        <div><label for="gRun">Corrida (km)</label><input type="number" id="gRun" min="0" step="1" inputmode="numeric"></div>
+        <div><label for="gSwim">Natação (m)</label><input type="number" id="gSwim" min="0" step="100" inputmode="numeric"></div>
+        <div><label for="gBike">Bike (km)</label><input type="number" id="gBike" min="0" step="1" inputmode="numeric"></div>
+      </div>
+      <button class="primary" style="margin-top:12px;width:100%" onclick="saveGoals()">Salvar metas</button>
+    </div>
+    <div class="card">
+      <h2>Sincronizar entre aparelhos</h2>
+      <div id="syncStatus" class="small" style="margin-bottom:10px"></div>
+      <label for="gToken">Token do GitHub (escopo <code>gist</code>)</label>
+      <input type="password" id="gToken" placeholder="ghp_..." autocomplete="off" spellcheck="false">
+      <div class="tiny muted" style="margin-top:5px">
+        <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Treinos" target="_blank" rel="noopener">Gerar um token aqui</a>
+        — já vem com o escopo certo marcado. Escolha validade longa e copie o valor (só aparece uma vez).
+      </div>
+      <label for="gGist">ID do Gist</label>
+      <div class="row" style="gap:8px">
+        <input id="gGist" placeholder="deixe vazio para criar um novo" autocomplete="off" spellcheck="false">
+        <button class="mini" onclick="createGist()">Criar</button>
+      </div>
+      <div class="tiny muted" style="margin-top:5px">
+        No primeiro aparelho, deixe vazio e clique em <b>Criar</b>. Nos outros, cole o mesmo ID.
+        Use um gist separado do da Frequência.
+      </div>
+      <div class="row wrapf" style="gap:8px;margin-top:14px">
+        <button class="primary" onclick="saveSync()">Conectar</button>
+        <button onclick="syncNow(true)">Sincronizar agora</button>
+        <button class="danger" onclick="disconnectSync()">Desconectar</button>
+      </div>
+      <div class="tiny muted" style="margin-top:10px">
+        O token fica salvo só neste navegador e nunca sai daqui a não ser para a API do GitHub.
+      </div>
+    </div>
+    <div class="card">
+      <h2>Backup</h2>
+      <p class="small muted" style="margin-top:0">
+        Vale mesmo com a sincronização ligada. Importar <b>substitui</b> os dados atuais;
+        a sincronização, ao contrário, funde.
+      </p>
+      <div class="row wrapf" style="gap:8px">
+        <button onclick="exportJSON()">Baixar backup</button>
+        <button onclick="copyJSON()">Copiar</button>
+        <button onclick="document.getElementById('fileIn').click()">Importar arquivo</button>
+      </div>
+      <input type="file" id="fileIn" accept="application/json" hidden>
+      <label for="pasteBox">Ou cole um backup aqui</label>
+      <textarea id="pasteBox" rows="4" placeholder="cole o JSON do backup"></textarea>
+      <button style="margin-top:8px" onclick="importPaste()">Importar do texto</button>
+    </div>
+    <div class="card">
+      <h2>Zona de perigo</h2>
+      <button class="danger" onclick="wipe()">Apagar tudo</button>
+    </div>
+    <p class="tiny muted" style="text-align:center;padding:0 0 10px">
+      Adicione à tela de início do celular para usar como app.
+    </p>
+  </section>
+
+</main>
+
+<button class="fab" onclick="openWorkout()">+ Treino</button>
+
+<nav>
+  <button data-v="painel" class="on" onclick="go('painel')">
+    <svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>Painel</button>
+  <button data-v="treinos" onclick="go('treinos')">
+    <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Treinos</button>
+  <button data-v="equip" onclick="go('equip')">
+    <svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M5.5 17.5l4.5-9h4l4.5 9M8.5 8.5h4"/></svg>Equipamentos</button>
+  <button data-v="ajustes" onclick="go('ajustes')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M4.5 12a7.5 7.5 0 0 1 .1-1.2l-2-1.5 2-3.4 2.3 1a7.5 7.5 0 0 1 2-1.2l.4-2.5h3.9l.4 2.5c.7.3 1.4.7 2 1.2l2.3-1 2 3.4-2 1.5a7.5 7.5 0 0 1 0 2.4l2 1.5-2 3.4-2.3-1a7.5 7.5 0 0 1-2 1.2l-.4 2.5h-3.9l-.4-2.5a7.5 7.5 0 0 1-2-1.2l-2.3 1-2-3.4 2-1.5A7.5 7.5 0 0 1 4.5 12z"/></svg>Ajustes</button>
+</nav>
+
+<div class="sheet" id="sheetWk" onclick="if(event.target===this)closeSheet('sheetWk')">
+  <div class="panel">
+    <h3 id="wkTitle">Novo treino</h3>
+    <label>Esporte</label>
+    <div class="sports" id="sportPick"></div>
+    <div class="grid2">
+      <div><label for="wDate">Data</label><input type="date" id="wDate" onchange="recalc()"></div>
+      <div><label for="wDist" id="wDistLb">Distância (km)</label>
+        <input type="text" id="wDist" inputmode="decimal" placeholder="10,2" oninput="recalc()"></div>
+    </div>
+    <label>Duração</label>
+    <div class="grid3">
+      <input type="number" id="wH" min="0" step="1" placeholder="h" inputmode="numeric" oninput="recalc()">
+      <input type="number" id="wM" min="0" max="59" step="1" placeholder="min" inputmode="numeric" oninput="recalc()">
+      <input type="number" id="wS" min="0" max="59" step="1" placeholder="s" inputmode="numeric" oninput="recalc()">
+    </div>
+    <div id="gearField" hidden>
+      <label for="wGear" id="wGearLb">Equipamento</label>
+      <select id="wGear"></select>
+    </div>
+    <label>Esforço percebido</label>
+    <div class="efforts" id="effPick"></div>
+    <div class="tiny muted" id="effHint" style="margin-top:5px">opcional</div>
+    <label for="wNote">Observação</label>
+    <input id="wNote" placeholder="Ex.: 5x1000 na raia">
+    <div class="calc" id="wCalc">preencha distância e duração</div>
+    <div class="row" style="gap:8px;margin-top:16px">
+      <button class="primary" style="flex:1" onclick="saveWorkout()">Salvar</button>
+      <button class="ghost" onclick="closeSheet('sheetWk')">Cancelar</button>
+    </div>
+    <button class="danger" id="delWk" style="width:100%;margin-top:8px" onclick="deleteWorkout()">Excluir treino</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheetGear" onclick="if(event.target===this)closeSheet('sheetGear')">
+  <div class="panel">
+    <h3 id="gearTitle">Novo equipamento</h3>
+    <label>Tipo</label>
+    <div class="sports" id="kindPick" style="grid-template-columns:repeat(2,1fr)"></div>
+    <label for="eName">Nome</label>
+    <input id="eName" placeholder="Ex.: Nimbus 26">
+    <div class="grid2">
+      <div><label for="eBase">Km que já tinha</label>
+        <input type="text" id="eBase" inputmode="decimal" placeholder="0"></div>
+      <div><label for="eLimit">Trocar em (km)</label>
+        <input type="text" id="eLimit" inputmode="decimal" placeholder="700"></div>
+    </div>
+    <div class="tiny muted" style="margin-top:5px">
+      <b>Km que já tinha</b> é o rodado antes de cadastrar aqui — deixe 0 se é novo.
+      <b>Trocar em</b> é o aviso de fim de vida (tênis: 600–800 km); vazio = sem aviso.
+    </div>
+    <div><label for="eSince">Em uso desde</label><input type="date" id="eSince"></div>
+    <label for="eMedia">Imagem</label>
+    <div class="row" style="gap:10px">
+      <div class="thumb" id="eThumb"></div>
+      <input id="eMedia" placeholder="corre5" autocomplete="off" spellcheck="false"
+             oninput="previewMedia()" style="flex:1">
+    </div>
+    <div class="tiny muted" style="margin-top:5px">
+      Nome do arquivo em <code>gear/</code>, sem a extensão — <code>corre5</code> lê
+      <code>gear/corre5.webp</code>. Vazio = sem foto.
+    </div>
+    <label class="row" style="gap:8px;margin-top:14px">
+      <input type="checkbox" id="eRetired" style="width:auto">
+      <span style="font-weight:600;color:var(--ink);font-size:13px">Aposentado</span>
+    </label>
+    <div class="tiny muted">Some das listas de seleção, mas o histórico e a quilometragem ficam.</div>
+    <div class="row" style="gap:8px;margin-top:16px">
+      <button class="primary" style="flex:1" onclick="saveGear()">Salvar</button>
+      <button class="ghost" onclick="closeSheet('sheetGear')">Cancelar</button>
+    </div>
+    <button class="danger" id="delGear" style="width:100%;margin-top:8px" onclick="deleteGear()">Excluir equipamento</button>
+  </div>
+</div>
+
+<script>
+var KEY='treinos_v1';
+var WD3=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+var MES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto',
+         'setembro','outubro','novembro','dezembro'];
+var EFF=['','muito leve','leve','moderado','forte','máximo'];
+
+/* Cada esporte tem a sua unidade de entrada e o tipo de equipamento que aceita.
+   Internamente a distância é SEMPRE em metros — assim 1500 m de natação nunca
+   tem chance de virar 1500 km numa soma. */
+var SPORT={
+  run: {name:'Corrida', icon:'🏃', unit:'km', gear:'shoe', color:'var(--run)'},
+  swim:{name:'Natação', icon:'🏊', unit:'m',  gear:null,   color:'var(--swim)'},
+  bike:{name:'Bike',    icon:'🚲', unit:'km', gear:'bike', color:'var(--bike)'}
+};
+var ORDER=['run','swim','bike'];
+var KIND={shoe:{name:'Tênis',icon:'👟',sport:'run'}, bike:{name:'Bicicleta',icon:'🚲',sport:'bike'}};
+
+/* ---------- estado ---------- */
+function blank(){
+  return {version:1, config:{goals:{run:0,swim:0,bike:0}},
+          workouts:[], gear:[], deleted:{}, updatedAt:0};
+}
+function normalize(r){
+  var b=blank(), c=(r&&r.config)||{}, g=c.goals||{};
+  return {version:1,
+          config:{goals:{run:+g.run||0, swim:+g.swim||0, bike:+g.bike||0}},
+          workouts:Array.isArray(r.workouts)?r.workouts:[],
+          gear:Array.isArray(r.gear)?r.gear:[],
+          deleted:(r.deleted&&typeof r.deleted==='object')?r.deleted:{},
+          updatedAt:r.updatedAt||0};
+}
+function load(){
+  try{
+    var r=JSON.parse(localStorage.getItem(KEY));
+    if(r && Array.isArray(r.workouts)) return normalize(r);
+  }catch(e){}
+  return blank();
+}
+var db=load();
+function persist(){
+  try{ localStorage.setItem(KEY,JSON.stringify(db)); }
+  catch(e){ alert('Não foi possível salvar neste navegador (modo privado?).'); }
+  render();
+}
+function save(){
+  db.updatedAt=Date.now();
+  persist();
+  schedulePush();
+}
+/* marca um id como apagado, para que a exclusão se propague no merge */
+function tomb(id){ db.deleted[id]=Date.now(); }
+
+/* une dois estados: nada registrado num aparelho se perde por causa do outro */
+function merge(a,b){
+  var deleted={}, k;
+  for(k in (a.deleted||{})) deleted[k]=a.deleted[k];
+  for(k in (b.deleted||{})) deleted[k]=Math.max(deleted[k]||0,b.deleted[k]);
+  var newer=(b.updatedAt||0)>(a.updatedAt||0)? b : a;
+  var older=(newer===b)? a : b;
+  function union(key){
+    var map={}, out=[], id;
+    older[key].forEach(function(x){ map[x.id]=x; });
+    newer[key].forEach(function(x){ map[x.id]=x; });   // em empate, vence o estado mais recente
+    for(id in map){ if(!deleted[id]) out.push(map[id]); }
+    out.sort(function(x,y){ return x.id<y.id? -1 : x.id>y.id? 1 : 0; }); // ordem estável entre aparelhos
+    return out;
+  }
+  /* aplica as exclusões ANTES de podar, senão um item apagado há muito tempo ressuscita aqui */
+  var workouts=union('workouts'), gear=union('gear');
+  /* só então descarta lápides com mais de 180 dias, para o arquivo não crescer sem fim */
+  var kept={}, cut=Date.now()-180*864e5;
+  for(k in deleted){ if(deleted[k]>=cut) kept[k]=deleted[k]; }
+  return {version:1, config:newer.config, workouts:workouts, gear:gear,
+          deleted:kept, updatedAt:Math.max(a.updatedAt||0,b.updatedAt||0)};
+}
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function esc(s){ return String(s).replace(/[&<>"']/g,function(m){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
+
+/* ---------- datas ---------- */
+function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseD(s){ var p=String(s).split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
+function today(){ return iso(new Date()); }
+function fmt(s){ var d=parseD(s); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'); }
+/* mostra o ano só quando não é o corrente — uma bike de 2024 não pode virar "20/11" */
+function fmtY(s){
+  var d=parseD(s);
+  return fmt(s)+(d.getFullYear()!==new Date().getFullYear()? '/'+String(d.getFullYear()).slice(2) : '');
+}
+function addDays(s,n){ var d=parseD(s); return iso(new Date(d.getFullYear(),d.getMonth(),d.getDate()+n)); }
+/* segunda-feira da semana de uma data */
+function weekStart(s){ var d=parseD(s); return addDays(s, -((d.getDay()+6)%7)); }
+
+/* ---------- números ---------- */
+function thou(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+function dec(n,d){ return n.toFixed(d).replace('.',','); }
+/* distância na unidade que o esporte usa; natação vira km quando passa de 10 mil metros */
+function distStr(sport,m){
+  if(!m) return '—';
+  if(sport==='swim') return m>=10000? dec(m/1000,1)+' km' : thou(Math.round(m))+' m';
+  return (m>=100000? thou(Math.round(m/1000)) : dec(m/1000,1))+' km';
+}
+function durStr(sec){
+  if(!sec) return '—';
+  var h=Math.floor(sec/3600), m=Math.round((sec%3600)/60);
+  if(m===60){ h++; m=0; }
+  return h? h+'h'+(m? String(m).padStart(2,'0'):'') : m+'min';
+}
+function mmss(sec){
+  sec=Math.round(sec);
+  return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+}
+/* corrida em min/km, natação em min/100 m, bike em km/h */
+function paceStr(sport,m,sec){
+  if(!m||!sec) return '';
+  if(sport==='swim') return mmss(sec/(m/100))+' /100m';
+  if(sport==='bike') return dec(m/1000/(sec/3600),1)+' km/h';
+  return mmss(sec/(m/1000))+' /km';
+}
+function numIn(id){
+  var v=document.getElementById(id).value.trim().replace(',','.');
+  var n=parseFloat(v);
+  return isNaN(n)? 0 : n;
+}
+
+/* ---------- agregações ---------- */
+function inRange(from,to){
+  return db.workouts.filter(function(w){ return w.date>=from && w.date<=to; });
+}
+/* {run:{dist,dur,n}, swim:…, bike:…, dur, load} */
+function sum(list){
+  var t={dur:0, load:0};
+  ORDER.forEach(function(s){ t[s]={dist:0,dur:0,n:0}; });
+  list.forEach(function(w){
+    var b=t[w.sport];
+    if(!b) return;
+    b.dist+=w.dist||0; b.dur+=w.dur||0; b.n++;
+    t.dur+=w.dur||0;
+    t.load+=Math.round((w.dur||0)/60)*(w.effort||0);
+  });
+  return t;
+}
+function gearKm(g){
+  var m=0;
+  db.workouts.forEach(function(w){ if(w.gearId===g.id) m+=w.dist||0; });
+  return (g.baseKm||0) + m/1000;
+}
+function gearRuns(g){
+  return db.workouts.filter(function(w){ return w.gearId===g.id; }).length;
+}
+function activeGear(kind){
+  return db.gear.filter(function(g){ return g.kind===kind && !g.retired; });
+}
+
+/* ---------- navegação ---------- */
+/* telas que não são aba: herdam o destaque da aba que as contém */
+var NAV_PAI={equipdet:'equip'};
+function go(v){
+  var secs=document.querySelectorAll('section');
+  for(var i=0;i<secs.length;i++) secs[i].classList.toggle('on', secs[i].id==='v-'+v);
+  var aba=NAV_PAI[v]||v;
+  var btns=document.querySelectorAll('nav button');
+  for(var j=0;j<btns.length;j++) btns[j].classList.toggle('on', btns[j].dataset.v===aba);
+  window.scrollTo(0,0);
+}
+function closeSheet(id){ document.getElementById(id).classList.remove('on'); }
+
+/* ---------- painel ---------- */
+var selWeek=null;       // semana destacada no gráfico
+var WEEKS=8;
+
+function weekList(){
+  var out=[], w=weekStart(today());
+  for(var i=WEEKS-1;i>=0;i--) out.push(addDays(w,-7*i));
+  return out;
+}
+function renderPainel(){
+  var p=document.getElementById('painel');
+  var wk=weekStart(today());
+  document.getElementById('weekInfo').textContent='semana de '+fmt(wk)+' a '+fmt(addDays(wk,6));
+
+  if(!db.workouts.length){
+    p.innerHTML='<div class="card"><div class="empty">Nenhum treino registrado ainda.<br><br>'+
+      '<button class="primary" onclick="openWorkout()">Registrar o primeiro</button>'+
+      '<div class="tiny" style="margin-top:14px">Cadastre também seus tênis e bicicletas'+
+      ' na aba Equipamentos para a quilometragem somar sozinha.</div></div></div>';
+    return;
+  }
+
+  var t=sum(inRange(wk,addDays(wk,6)));
+  /* A semana corrente quase sempre está pela metade. Comparar com a semana passada
+     inteira faria toda quarta-feira parecer uma queda de 70% — então o confronto é
+     com o MESMO trecho da semana anterior (segunda até o mesmo dia da semana). */
+  var elapsed=(new Date().getDay()+6)%7;
+  var prev=sum(inRange(addDays(wk,-7), addDays(wk,-7+elapsed)));
+  var goals=db.config.goals;
+
+  var html='<div class="card">'+
+    '<div class="row between"><h2 style="margin:0">Esta semana</h2>'+
+      '<span class="tiny muted">'+(t.load? 'carga '+thou(t.load):'')+'</span></div>'+
+    '<div class="row" style="align-items:flex-end;gap:10px;margin-top:10px">'+
+      '<div class="hero">'+(t.dur? durStr(t.dur):'0min')+'</div>'+
+      '<div class="tiny muted" style="padding-bottom:5px">tempo total</div></div>'+
+    '<div class="tiny muted" style="margin-top:6px">'+deltaStr(t.dur,prev.dur,elapsed<6)+'</div>'+
+    '<div class="tiles">'+ ORDER.map(function(s){
+      var b=t[s], meta=goals[s];
+      var done = s==='swim'? b.dist : b.dist/1000;
+      var pct = meta? Math.min(100,Math.round(done/meta*100)) : 0;
+      return '<div class="tile">'+
+        '<div class="lb"><span class="key" style="background:'+SPORT[s].color+'"></span>'+SPORT[s].name+'</div>'+
+        /* no ladrilho da semana, zero é "0 km" e não "—": ao lado de "0% da meta" o traço confunde */
+        '<div class="vl">'+(b.dist? distStr(s,b.dist) : '0 '+SPORT[s].unit)+'</div>'+
+        '<div class="dl">'+(meta? pct+'% da meta' : (b.n? b.n+(b.n>1?' sessões':' sessão') : '—'))+'</div>'+
+      '</div>';
+    }).join('') +'</div></div>';
+
+  /* ---- gráfico de volume: minutos por semana, empilhado por esporte ----
+     tempo é a única grandeza somável entre os três esportes; km não é. */
+  var weeks=weekList();
+  var data=weeks.map(function(w){ return sum(inRange(w,addDays(w,6))); });
+  var max=0;
+  data.forEach(function(d){ if(d.dur>max) max=d.dur; });
+  var H=120;
+  if(selWeek===null || weeks.indexOf(selWeek)<0) selWeek=weeks[weeks.length-1];
+
+  html+='<div class="card"><div class="row between"><h2 style="margin:0">Volume</h2>'+
+    '<span class="tiny muted">'+(max? 'topo '+durStr(max):'')+'</span></div>'+
+    '<div class="tiny muted">minutos por semana, últimas '+WEEKS+' semanas</div>'+
+    '<div class="chart">'+
+      '<div class="gridline" style="bottom:'+H+'px"></div>'+
+      '<div class="gridline" style="bottom:'+(H/2)+'px"></div>'+
+      weeks.map(function(w,i){
+        var d=data[i];
+        var segs=ORDER.filter(function(s){ return d[s].dur>0; }).map(function(s){
+          var h=max? Math.max(3,Math.round(d[s].dur/max*H)) : 0;
+          return '<i style="height:'+h+'px;background:'+SPORT[s].color+'"></i>';
+        }).join('');
+        return '<button class="colwrap'+(w===selWeek?' sel':'')+'" onclick="pickWeek(\''+w+'\')" '+
+          'aria-label="semana de '+fmt(w)+', '+durStr(d.dur)+'">'+
+          '<div class="col">'+segs+'</div></button>';
+      }).join('')+
+    '</div>'+
+    /* rotula de trás para frente: a semana corrente, que é onde o olho vai, sempre tem data */
+    '<div class="xaxis">'+ weeks.map(function(w,i){
+        return '<div>'+(((WEEKS-1-i)%2===0)? fmt(w) : '')+'</div>';
+      }).join('') +'</div>'+
+    '<div class="legend">'+ ORDER.map(function(s){
+        return '<span><span class="key" style="background:'+SPORT[s].color+'"></span>'+SPORT[s].name+'</span>';
+      }).join('') +'</div>'+
+    '<div class="readout" id="readout"></div>'+
+  '</div>';
+
+  /* ---- totais por esporte: serve de leitura exata para o gráfico ---- */
+  var y=new Date().getFullYear();
+  var mStart=iso(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  var mm=sum(inRange(mStart,today()));
+  var yy=sum(inRange(y+'-01-01',today()));
+  var all=sum(db.workouts);
+  html+='<div class="card"><h2>Totais</h2><div class="tscroll"><table>'+
+    '<thead><tr><th>Esporte</th><th>'+MES[new Date().getMonth()].slice(0,3)+'</th>'+
+    '<th>'+y+'</th><th>Tudo</th></tr></thead><tbody>'+
+    ORDER.map(function(s){
+      return '<tr><td><span class="row" style="gap:7px"><span class="key" style="background:'+SPORT[s].color+'"></span>'+
+          SPORT[s].name+'</span></td>'+
+        ['mm','yy','all'].map(function(k,ix){
+          var b=[mm,yy,all][ix][s];
+          return '<td><b>'+distStr(s,b.dist)+'</b><span class="u">'+durStr(b.dur)+'</span></td>';
+        }).join('')+'</tr>';
+    }).join('')+
+    '<tr><td class="muted">Tempo total</td>'+
+      '<td><b>'+durStr(mm.dur)+'</b></td><td><b>'+durStr(yy.dur)+'</b></td>'+
+      '<td><b>'+durStr(all.dur)+'</b></td></tr>'+
+    '</tbody></table></div></div>';
+
+  /* ---- equipamentos que pedem atenção ---- */
+  var alerts=db.gear.filter(function(g){
+    return !g.retired && g.limitKm && gearKm(g)>=g.limitKm*0.8;
+  });
+  if(alerts.length){
+    html+='<div class="card"><h2>Atenção nos equipamentos</h2>'+ alerts.map(function(g){
+      var k=gearKm(g), pct=Math.min(100,Math.round(k/g.limitKm*100));
+      var over=k>=g.limitKm;
+      return '<div class="item"><div style="min-width:0">'+
+        '<div style="font-weight:600">'+KIND[g.kind].icon+' '+esc(g.name)+'</div>'+
+        '<div class="tiny muted">'+dec(k,0)+' de '+dec(g.limitKm,0)+' km · '+pct+'%</div></div>'+
+        '<span class="badge '+(over?'b-bad':'b-warn')+'">'+(over?'trocar':'perto do fim')+'</span></div>';
+    }).join('')+'</div>';
+  }
+
+  p.innerHTML=html;
+  renderReadout(weeks,data);
+}
+function deltaStr(now,before,parcial){
+  var ref=parcial? 'vs. mesmo ponto da semana passada' : 'vs. semana passada';
+  if(!before) return '<span class="muted">sem base de comparação</span>';
+  var d=Math.round((now-before)/before*100);
+  if(d===0) return 'sem mudança '+ref;
+  return (d>0?'+':'')+d+'% '+ref;
+}
+function pickWeek(w){ selWeek=w; renderPainel(); }
+function renderReadout(weeks,data){
+  var i=weeks.indexOf(selWeek);
+  if(i<0) return;
+  var d=data[i], el=document.getElementById('readout');
+  if(!el) return;
+  var parts=ORDER.filter(function(s){ return d[s].dur>0 || d[s].dist>0; }).map(function(s){
+    return '<span><span class="key" style="background:'+SPORT[s].color+'"></span>'+
+      distStr(s,d[s].dist)+' <span class="muted">· '+durStr(d[s].dur)+'</span></span>';
+  });
+  el.innerHTML='<div class="row between"><b class="small">Semana de '+fmt(selWeek)+
+      ' a '+fmt(addDays(selWeek,6))+'</b>'+
+    '<span class="small muted">'+durStr(d.dur)+'</span></div>'+
+    (parts.length? '<div class="legend" style="margin-top:7px;color:var(--ink)">'+parts.join('')+'</div>'
+                 : '<div class="tiny muted" style="margin-top:6px">nenhum treino nesta semana</div>');
+}
+
+/* ---------- histórico ---------- */
+var filter='all';
+function setFilter(f){ filter=f; render(); }
+function renderHist(){
+  document.getElementById('filters').innerHTML=
+    '<button class="chip'+(filter==='all'?' on':'')+'" onclick="setFilter(\'all\')">Tudo</button>'+
+    ORDER.map(function(s){
+      return '<button class="chip'+(filter===s?' on':'')+'" onclick="setFilter(\''+s+'\')">'+
+        SPORT[s].icon+' '+SPORT[s].name+'</button>';
+    }).join('');
+
+  var list=db.workouts.filter(function(w){ return filter==='all'||w.sport===filter; })
+    .sort(function(a,b){ return a.date===b.date? (a.id<b.id?1:-1) : b.date.localeCompare(a.date); });
+
+  if(!list.length){
+    document.getElementById('histList').innerHTML=
+      '<div class="card"><div class="empty">Nenhum treino'+
+      (filter==='all'?'':' de '+SPORT[filter].name.toLowerCase())+' por aqui.</div></div>';
+    return;
+  }
+  var out='', month='';
+  list.forEach(function(w){
+    var d=parseD(w.date), mk=d.getFullYear()+'-'+d.getMonth();
+    if(mk!==month){
+      if(month) out+='</div>';
+      month=mk;
+      var ms=sum(list.filter(function(x){
+        var dx=parseD(x.date);
+        return dx.getFullYear()+'-'+dx.getMonth()===mk;
+      }));
+      out+='<div class="mhead">'+MES[d.getMonth()]+' de '+d.getFullYear()+
+        ' <span style="float:right;text-transform:none;letter-spacing:0">'+durStr(ms.dur)+'</span></div>'+
+        '<div class="card">';
+    }
+    var g=w.gearId? db.gear.filter(function(x){return x.id===w.gearId;})[0] : null;
+    var meta=[fmt(w.date)+' · '+WD3[d.getDay()]];
+    if(w.dur) meta.push(durStr(w.dur));
+    var pc=paceStr(w.sport,w.dist,w.dur);
+    if(pc) meta.push(pc);
+    if(g) meta.push(KIND[g.kind].icon+' '+esc(g.name));
+    if(w.effort) meta.push('esforço '+w.effort);
+    out+='<div class="item tap" onclick="openWorkout(\''+w.id+'\')">'+
+      '<div class="row" style="gap:9px;min-width:0">'+
+        '<span class="dot" style="background:'+SPORT[w.sport].color+'"></span>'+
+        '<div style="min-width:0">'+
+          '<div style="font-weight:600">'+SPORT[w.sport].icon+' '+distStr(w.sport,w.dist)+
+            (w.note? ' <span class="tiny muted">'+esc(w.note)+'</span>':'')+'</div>'+
+          '<div class="tiny muted">'+meta.join(' · ')+'</div>'+
+        '</div></div>'+
+      '<span class="muted" style="font-size:18px">›</span></div>';
+  });
+  out+='</div>';
+  document.getElementById('histList').innerHTML=out;
+}
+
+/* ---------- mídia do equipamento ----------
+   Slot trocável, de propósito. Hoje devolve <img> com o PNG recortado; quando
+   houver GLB, é aqui — e só aqui — que entra o <model-viewer>, lendo o mesmo
+   campo `media`. O resto da tela não sabe nem precisa saber a diferença. */
+/* WebP com alfa pesa ~1/5 do PNG equivalente (185 KB contra 850 KB nos dois
+   equipamentos) e o Safari lê desde 2020. Extensão num lugar só. */
+var MEDIA_EXT='.webp';
+function midiaURL(nome){ return 'gear/'+encodeURIComponent(nome)+MEDIA_EXT; }
+
+function midiaHTML(g){
+  if(!g.media) return '<div class="semfoto"><b>'+KIND[g.kind].icon+'</b>'+
+    'Sem imagem.<br>Ponha o arquivo em <code>gear/</code> e escreva o nome dele em Editar.</div>';
+  return '<img src="'+midiaURL(g.media)+'" alt="'+esc(g.name)+'" '+
+    'loading="lazy" onerror="this.parentNode.innerHTML=semFoto(\''+esc(g.media)+'\')">';
+}
+function semFoto(nome){
+  return '<div class="semfoto"><b>⚠</b>Não achei <code>gear/'+esc(nome)+MEDIA_EXT+'</code>.<br>'+
+    'Confira o nome do arquivo.</div>';
+}
+function previewMedia(){
+  var nome=document.getElementById('eMedia').value.trim();
+  document.getElementById('eThumb').innerHTML = nome
+    ? '<img src="'+midiaURL(nome)+'" onerror="this.style.display=\'none\'">'
+    : '<span class="tiny muted">—</span>';
+}
+
+/* ---------- equipamentos ---------- */
+function renderGear(){
+  var el=document.getElementById('gearList');
+  if(!db.gear.length){
+    el.innerHTML='<div class="card"><div class="empty">Nenhum equipamento cadastrado.<br><br>'+
+      '<button class="primary" onclick="openGear()">Cadastrar tênis ou bike</button></div></div>';
+    return;
+  }
+  function card(g){
+    var k=gearKm(g), n=gearRuns(g);
+    var pct=g.limitKm? Math.min(100,k/g.limitKm*100) : 0;
+    var col=!g.limitKm? SPORT[KIND[g.kind].sport].color
+            : pct>=100? 'var(--bad)' : pct>=80? 'var(--warn)' : SPORT[KIND[g.kind].sport].color;
+    var thumb = g.media
+      ? '<div class="thumb"><img src="'+midiaURL(g.media)+'" alt=""'+
+        ' onerror="this.style.display=\'none\'"></div>'
+      : '<div class="thumb"><span style="font-size:20px">'+KIND[g.kind].icon+'</span></div>';
+    return '<div class="card tap" onclick="openGearDetail(\''+g.id+'\')">'+
+      '<div class="row between" style="align-items:flex-start">'+
+        '<div class="row" style="gap:11px;min-width:0">'+ thumb +
+          '<div style="min-width:0">'+
+          '<div style="font-weight:650;font-size:15.5px;letter-spacing:-.2px">'+esc(g.name)+'</div>'+
+          '<div class="tiny muted">'+n+(n===1?' treino':' treinos')+
+            (g.since? ' · desde '+fmtY(g.since):'')+
+            (g.baseKm? ' · '+dec(g.baseKm,0)+' km de partida':'')+'</div>'+
+        '</div></div>'+
+        '<button class="mini ghost" onclick="event.stopPropagation();openGear(\''+g.id+'\')">Editar</button>'+
+      '</div>'+
+      '<div class="row between" style="align-items:flex-end;margin-top:10px">'+
+        '<div class="big">'+dec(k,1)+' <span style="font-size:13px;font-weight:500;color:var(--muted)">km</span></div>'+
+        (g.limitKm? '<span class="badge '+(pct>=100?'b-bad':pct>=80?'b-warn':'b-ok')+'">'+
+            (pct>=100? 'trocar' : pct>=80? 'perto do fim' : Math.round(g.limitKm-k)+' km restantes')+'</span>':'')+
+      '</div>'+
+      (g.limitKm? '<div class="meter" style="--mc:'+col+'"><i style="width:'+pct+'%"></i></div>'+
+        '<div class="tiny muted">meta de troca: '+dec(g.limitKm,0)+' km</div>':'')+
+    '</div>';
+  }
+  var active=db.gear.filter(function(g){return !g.retired;});
+  var retired=db.gear.filter(function(g){return g.retired;});
+  var out=active.map(card).join('');
+  if(retired.length) out+='<div class="mhead">Aposentados</div>'+retired.map(card).join('');
+  el.innerHTML=out;
+}
+
+/* ---------- detalhe do equipamento ---------- */
+var detGear=null;
+function openGearDetail(id){ detGear=id; renderGearDetail(); go('equipdet'); }
+
+function renderGearDetail(){
+  var el=document.getElementById('gearDet');
+  var g=db.gear.filter(function(x){ return x.id===detGear; })[0];
+  if(!g){ el.innerHTML=''; return; }
+
+  var k=gearKm(g), n=gearRuns(g);
+  var meus=db.workouts.filter(function(w){ return w.gearId===g.id; })
+                      .sort(function(a,b){ return b.date.localeCompare(a.date); });
+  var pct=g.limitKm? Math.min(100,k/g.limitKm*100) : 0;
+  var corEsporte=SPORT[KIND[g.kind].sport].color;
+  var col=!g.limitKm? corEsporte : pct>=100? 'var(--bad)' : pct>=80? 'var(--warn)' : corEsporte;
+  var rodado=k-(g.baseKm||0);
+
+  var html='<div class="card palco">'+midiaHTML(g)+'</div>'+
+    '<div class="card">'+
+      '<div class="row between" style="align-items:flex-start">'+
+        '<div style="min-width:0">'+
+          '<div style="font-weight:650;font-size:17px;letter-spacing:-.3px">'+esc(g.name)+'</div>'+
+          '<div class="tiny muted">'+KIND[g.kind].icon+' '+KIND[g.kind].name+
+            (g.retired? ' · aposentado':'')+'</div>'+
+        '</div>'+
+        '<button class="mini" onclick="openGear(\''+g.id+'\')">Editar</button>'+
+      '</div>'+
+      '<div class="row between" style="align-items:flex-end;margin-top:14px">'+
+        '<div class="hero">'+dec(k,1)+'<span style="font-size:15px;font-weight:500;'+
+          'color:var(--muted);letter-spacing:0"> km</span></div>'+
+        (g.limitKm? '<span class="badge '+(pct>=100?'b-bad':pct>=80?'b-warn':'b-ok')+'">'+
+          (pct>=100? 'trocar' : pct>=80? 'perto do fim' : Math.round(g.limitKm-k)+' km restantes')+
+          '</span>':'')+
+      '</div>'+
+      (g.limitKm? '<div class="meter" style="--mc:'+col+'"><i style="width:'+pct+'%"></i></div>'+
+        '<div class="tiny muted">'+Math.round(pct)+'% da meta de troca ('+dec(g.limitKm,0)+' km)</div>':'')+
+    '</div>'+
+    '<div class="card"><h2>Números</h2><div class="fatos">'+
+      '<div class="fato"><b>'+n+'</b><span>'+(n===1?'treino':'treinos')+' registrados</span></div>'+
+      '<div class="fato"><b>'+(n? dec(rodado/n,1):'—')+'</b><span>km por treino, em média</span></div>'+
+      '<div class="fato"><b>'+dec(rodado,1)+'</b><span>km rodados no app</span></div>'+
+      '<div class="fato"><b>'+(g.baseKm? dec(g.baseKm,0):'0')+'</b><span>km de partida</span></div>'+
+      '<div class="fato"><b>'+(g.since? fmtY(g.since):'—')+'</b><span>em uso desde</span></div>'+
+      '<div class="fato"><b>'+(meus.length? fmtY(meus[0].date):'—')+'</b><span>último uso</span></div>'+
+    '</div></div>';
+
+  html+='<div class="card"><h2>Treinos com '+esc(g.name)+'</h2>'+
+    (meus.length? meus.slice(0,12).map(function(w){
+      var pc=paceStr(w.sport,w.dist,w.dur);
+      return '<div class="item tap" onclick="openWorkout(\''+w.id+'\')">'+
+        '<div class="row" style="gap:9px;min-width:0">'+
+          '<span class="dot" style="background:'+SPORT[w.sport].color+'"></span>'+
+          '<div style="min-width:0"><div style="font-weight:600">'+distStr(w.sport,w.dist)+'</div>'+
+          '<div class="tiny muted">'+fmtY(w.date)+(w.dur? ' · '+durStr(w.dur):'')+
+            (pc? ' · '+pc:'')+'</div></div></div>'+
+        '<span class="muted" style="font-size:18px">›</span></div>';
+    }).join('') + (meus.length>12? '<div class="tiny muted" style="padding-top:10px">'+
+        'e mais '+(meus.length-12)+'…</div>':'')
+      : '<div class="empty small">Nenhum treino marcado com este equipamento ainda.</div>')+
+  '</div>';
+
+  el.innerHTML=html;
+}
+
+/* ---------- render ---------- */
+function render(){
+  renderPainel();
+  renderHist();
+  renderGear();
+  renderGearDetail();
+  var g=db.config.goals;
+  document.getElementById('gRun').value=g.run||'';
+  document.getElementById('gSwim').value=g.swim||'';
+  document.getElementById('gBike').value=g.bike||'';
+}
+
+/* ---------- folha do treino ---------- */
+var editWk=null, pickedSport='run', pickedEffort=0;
+
+function openWorkout(id){
+  editWk = id? db.workouts.filter(function(w){return w.id===id;})[0] : null;
+  document.getElementById('wkTitle').textContent = editWk? 'Editar treino':'Novo treino';
+  document.getElementById('delWk').style.display = editWk? 'block':'none';
+
+  pickedSport = editWk? editWk.sport : lastSport();
+  pickedEffort = editWk? (editWk.effort||0) : 0;
+  document.getElementById('wDate').value = editWk? editWk.date : today();
+  document.getElementById('wNote').value = editWk? (editWk.note||'') : '';
+
+  var sec=editWk? (editWk.dur||0) : 0;
+  document.getElementById('wH').value = sec? Math.floor(sec/3600)||'' : '';
+  document.getElementById('wM').value = sec? Math.floor(sec%3600/60) : '';
+  document.getElementById('wS').value = sec&&sec%60? sec%60 : '';
+
+  drawSports(); drawEfforts(); syncSportFields();
+  /* 3 casas: os metros têm que voltar intactos ao editar. Com 2, uma maratona de
+     42.195 m reabria como 42,20 e virava 42.200 ao salvar de novo. */
+  if(editWk) document.getElementById('wDist').value =
+    editWk.sport==='swim'? String(Math.round(editWk.dist)) : dec(editWk.dist/1000,3).replace(/,?0+$/,'');
+  recalc();
+  document.getElementById('sheetWk').classList.add('on');
+}
+/* repete o esporte do último treino — quase sempre é o que você vai lançar */
+function lastSport(){
+  var l=db.workouts.slice().sort(function(a,b){return b.date.localeCompare(a.date);})[0];
+  return l? l.sport : 'run';
+}
+function drawSports(){
+  document.getElementById('sportPick').innerHTML=ORDER.map(function(s){
+    return '<button class="sport'+(s===pickedSport?' on':'')+'" style="--sc:'+SPORT[s].color+'" '+
+      'onclick="pickSport(\''+s+'\')"><b>'+SPORT[s].icon+'</b>'+SPORT[s].name+'</button>';
+  }).join('');
+}
+function pickSport(s){ pickedSport=s; drawSports(); syncSportFields(); recalc(); }
+function drawEfforts(){
+  document.getElementById('effPick').innerHTML=[1,2,3,4,5].map(function(n){
+    return '<button class="eff'+(n<=pickedEffort?' on':'')+'" onclick="pickEffort('+n+')">'+n+'</button>';
+  }).join('');
+  document.getElementById('effHint').textContent =
+    pickedEffort? pickedEffort+' · '+EFF[pickedEffort]+' (toque de novo para limpar)' : 'opcional';
+}
+function pickEffort(n){ pickedEffort = (n===pickedEffort)? 0 : n; drawEfforts(); }
+/* a unidade da distância e a lista de equipamentos mudam com o esporte */
+function syncSportFields(){
+  var sp=SPORT[pickedSport];
+  document.getElementById('wDistLb').textContent='Distância ('+sp.unit+')';
+  document.getElementById('wDist').placeholder = sp.unit==='m'? '1500':'10,2';
+  var field=document.getElementById('gearField'), sel=document.getElementById('wGear');
+  if(!sp.gear){ field.hidden=true; return; }
+  field.hidden=false;
+  document.getElementById('wGearLb').textContent=KIND[sp.gear].name;
+  var list=activeGear(sp.gear), cur=editWk? editWk.gearId : '';
+  sel.innerHTML='<option value="">— nenhum —</option>'+list.map(function(g){
+    return '<option value="'+g.id+'"'+(g.id===cur?' selected':'')+'>'+esc(g.name)+'</option>';
+  }).join('');
+  if(!list.length) sel.innerHTML='<option value="">nenhum '+KIND[sp.gear].name.toLowerCase()+' cadastrado</option>';
+}
+function formDur(){
+  return numIn('wH')*3600 + numIn('wM')*60 + numIn('wS');
+}
+function formDist(){
+  var v=numIn('wDist');
+  return SPORT[pickedSport].unit==='m'? Math.round(v) : Math.round(v*1000);
+}
+function recalc(){
+  var m=formDist(), sec=formDur();
+  var pc=paceStr(pickedSport,m,sec);
+  document.getElementById('wCalc').innerHTML = pc
+    ? '<b>'+pc+'</b><br>'+distStr(pickedSport,m)+' em '+durStr(sec)
+    : (m||sec? distStr(pickedSport,m)+(sec? ' · '+durStr(sec):'') : 'preencha distância e duração');
+}
+function saveWorkout(){
+  var date=document.getElementById('wDate').value;
+  var dist=formDist(), dur=formDur();
+  if(!date){ alert('Escolha a data do treino.'); return; }
+  if(!dist && !dur){ alert('Preencha pelo menos a distância ou a duração.'); return; }
+  var sp=SPORT[pickedSport];
+  var gearId = sp.gear? document.getElementById('wGear').value : '';
+  var w={sport:pickedSport, date:date, dist:dist, dur:dur, effort:pickedEffort,
+         gearId:gearId, note:document.getElementById('wNote').value.trim()};
+  if(editWk){
+    for(var k in w) editWk[k]=w[k];
+  }else{
+    w.id=uid();
+    db.workouts.push(w);
+  }
+  closeSheet('sheetWk'); save();
+}
+function deleteWorkout(){
+  if(!editWk) return;
+  if(!confirm('Excluir este treino? A quilometragem do equipamento é recalculada.')) return;
+  tomb(editWk.id);
+  db.workouts=db.workouts.filter(function(w){ return w.id!==editWk.id; });
+  closeSheet('sheetWk'); save();
+}
+
+/* ---------- folha do equipamento ---------- */
+var editGear=null, pickedKind='shoe';
+
+function openGear(id){
+  editGear = id? db.gear.filter(function(g){return g.id===id;})[0] : null;
+  document.getElementById('gearTitle').textContent = editGear? 'Editar equipamento':'Novo equipamento';
+  document.getElementById('delGear').style.display = editGear? 'block':'none';
+  pickedKind = editGear? editGear.kind : 'shoe';
+  document.getElementById('eName').value = editGear? editGear.name : '';
+  document.getElementById('eBase').value = (editGear&&editGear.baseKm)? dec(editGear.baseKm,0) : '';
+  document.getElementById('eLimit').value = (editGear&&editGear.limitKm)? dec(editGear.limitKm,0) : '';
+  document.getElementById('eSince').value = editGear? (editGear.since||'') : today();
+  document.getElementById('eRetired').checked = !!(editGear&&editGear.retired);
+  document.getElementById('eMedia').value = editGear? (editGear.media||'') : '';
+  previewMedia();
+  drawKinds();
+  document.getElementById('sheetGear').classList.add('on');
+}
+function drawKinds(){
+  document.getElementById('kindPick').innerHTML=['shoe','bike'].map(function(k){
+    return '<button class="sport'+(k===pickedKind?' on':'')+'" '+
+      'style="--sc:'+SPORT[KIND[k].sport].color+'" onclick="pickKind(\''+k+'\')">'+
+      '<b>'+KIND[k].icon+'</b>'+KIND[k].name+'</button>';
+  }).join('');
+}
+function pickKind(k){
+  pickedKind=k;
+  var lim=document.getElementById('eLimit');
+  if(!lim.value) lim.placeholder = k==='shoe'? '700':'vazio = sem aviso';
+  drawKinds();
+}
+function saveGear(){
+  var name=document.getElementById('eName').value.trim();
+  if(!name){ alert('Dê um nome ao equipamento.'); return; }
+  var g={kind:pickedKind, name:name,
+         baseKm:numIn('eBase'), limitKm:numIn('eLimit'),
+         since:document.getElementById('eSince').value,
+         retired:document.getElementById('eRetired').checked,
+         /* só o nome do arquivo viaja na sincronização — a imagem mora no repositório */
+         media:document.getElementById('eMedia').value.trim()};
+  if(editGear){
+    for(var k in g) editGear[k]=g[k];
+  }else{
+    g.id=uid();
+    db.gear.push(g);
+  }
+  closeSheet('sheetGear'); save();
+}
+function deleteGear(){
+  if(!editGear) return;
+  var n=gearRuns(editGear);
+  if(n && !confirm('Este equipamento está em '+n+(n>1?' treinos':' treino')+
+      '. Excluir desvincula (os treinos continuam, sem equipamento).\n\n'+
+      'Se a ideia é parar de usar sem perder a conta, marque "Aposentado" em vez de excluir.')) return;
+  if(!n && !confirm('Excluir "'+editGear.name+'"?')) return;
+  var gone=editGear.id;
+  db.workouts.forEach(function(w){ if(w.gearId===gone) w.gearId=''; });
+  tomb(gone);
+  db.gear=db.gear.filter(function(g){ return g.id!==gone; });
+  closeSheet('sheetGear');
+  if(detGear===gone) go('equip');   // a tela de detalhe ficaria órfã
+  save();
+}
+
+/* ---------- metas ---------- */
+function saveGoals(){
+  db.config.goals={run:numIn('gRun'), swim:numIn('gSwim'), bike:numIn('gBike')};
+  save();
+  alert('Metas salvas.');
+}
+
+/* ---------- backup ---------- */
+function exportJSON(){
+  var blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='treinos-'+today()+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
+}
+function copyJSON(){
+  var t=JSON.stringify(db);
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(t).then(function(){ alert('Backup copiado.'); },
+      function(){ document.getElementById('pasteBox').value=t; alert('Copie o texto da caixa em Ajustes.'); });
+  }else{
+    document.getElementById('pasteBox').value=t;
+    alert('Copie o texto da caixa em Ajustes.');
+  }
+}
+function applyImport(txt){
+  var r;
+  try{ r=JSON.parse(txt); }catch(e){ alert('Arquivo inválido.'); return; }
+  if(!r||!Array.isArray(r.workouts)){ alert('Arquivo inválido.'); return; }
+  if(!confirm('Substituir os dados atuais pelo backup?')) return;
+  db=normalize(r);
+  save(); go('painel'); alert('Backup importado.');
+}
+function importPaste(){ applyImport(document.getElementById('pasteBox').value); }
+document.getElementById('fileIn').addEventListener('change',function(ev){
+  var f=ev.target.files[0];
+  if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){ applyImport(r.result); };
+  r.readAsText(f);
+  ev.target.value='';
+});
+function wipe(){
+  if(!confirm('Apagar TODOS os treinos e equipamentos? Isso não tem volta.')) return;
+  db=blank(); save(); go('painel');
+}
+
+/* ---------- sincronização via Gist ---------- */
+var SKEY='treinos_sync', FILE='treinos.json', API='https://api.github.com/gists';
+var sync={token:'', gist:''};
+try{ sync=Object.assign(sync, JSON.parse(localStorage.getItem(SKEY))||{}); }catch(e){}
+var pushTimer=null, busy=false, lastState='';
+
+function on(){ return !!(sync.token && sync.gist); }
+function setState(kind,msg){
+  lastState=msg;
+  var colors={ok:'var(--ok)',work:'var(--muted)',err:'var(--bad)',off:'var(--muted)'};
+  var pill=document.getElementById('syncPill');
+  pill.textContent = on()? msg : '';
+  pill.style.color = colors[kind]||'var(--muted)';
+  var box=document.getElementById('syncStatus');
+  box.innerHTML = on()
+    ? '<span style="color:'+(colors[kind]||'')+'">●</span> '+esc(msg)+' <span class="muted">· gist '+esc(sync.gist.slice(0,8))+'…</span>'
+    : '<span class="muted">Não conectado — os dados ficam só neste aparelho.</span>';
+}
+function api(path,opts){
+  opts=opts||{};
+  opts.headers=Object.assign({
+    'Authorization':'Bearer '+sync.token,
+    'Accept':'application/vnd.github+json',
+    'X-GitHub-Api-Version':'2022-11-28'
+  }, opts.headers||{});
+  return fetch(API+path,opts).then(function(r){
+    if(r.status===401) throw new Error('token inválido ou revogado');
+    if(r.status===404) throw new Error('gist não encontrado');
+    if(!r.ok) throw new Error('GitHub respondeu '+r.status);
+    return r.json();
+  });
+}
+function readGist(){
+  return api('/'+sync.gist,{cache:'no-store'}).then(function(g){
+    var f=g.files&&g.files[FILE];
+    if(!f) return null;
+    if(f.truncated && f.raw_url) return fetch(f.raw_url).then(function(r){return r.text();}).then(JSON.parse);
+    return JSON.parse(f.content);
+  });
+}
+function writeGist(state){
+  var files={}; files[FILE]={content:JSON.stringify(state,null,2)};
+  return api('/'+sync.gist,{method:'PATCH',headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({files:files})});
+}
+/* lê a nuvem, funde com o local e devolve o resultado para os dois lados */
+function syncNow(manual){
+  if(!on()){ if(manual) alert('Conecte um token e um gist primeiro.'); setState('off',''); return Promise.resolve(); }
+  if(busy) return Promise.resolve();
+  busy=true; setState('work','sincronizando…');
+  return readGist().then(function(remote){
+    var merged = remote? merge(db, normalize(remote)) : db;
+    var changedHere = JSON.stringify(merged)!==JSON.stringify(db);
+    var changedThere = !remote || JSON.stringify(merged)!==JSON.stringify(normalize(remote));
+    if(changedHere){ db=merged; persist(); }
+    return changedThere? writeGist(merged) : null;
+  }).then(function(){
+    busy=false; setState('ok','sincronizado '+new Date().toTimeString().slice(0,5));
+  }).catch(function(e){
+    busy=false; setState('err','erro: '+e.message);
+    if(manual) alert('Falha ao sincronizar: '+e.message);
+  });
+}
+function schedulePush(){
+  if(!on()) return;
+  clearTimeout(pushTimer);
+  setState('work','alterações pendentes…');
+  pushTimer=setTimeout(function(){ syncNow(false); },1500);
+}
+function createGist(){
+  var t=document.getElementById('gToken').value.trim();
+  if(!t){ alert('Cole o token primeiro.'); return; }
+  sync.token=t;
+  var files={}; files[FILE]={content:JSON.stringify(db,null,2)};
+  fetch(API,{method:'POST',headers:{'Authorization':'Bearer '+t,
+      'Accept':'application/vnd.github+json','Content-Type':'application/json'},
+      body:JSON.stringify({description:'Treinos — corrida, natação e bike',public:false,files:files})})
+   .then(function(r){ if(!r.ok) throw new Error('GitHub respondeu '+r.status); return r.json(); })
+   .then(function(g){
+      document.getElementById('gGist').value=g.id;
+      alert('Gist criado. Clique em Conectar.\n\nGuarde este ID para usar nos outros aparelhos:\n'+g.id);
+   })
+   .catch(function(e){ alert('Não deu para criar o gist: '+e.message+'\nConfira se o token tem o escopo "gist".'); });
+}
+function saveSync(){
+  sync.token=document.getElementById('gToken').value.trim();
+  sync.gist=document.getElementById('gGist').value.trim();
+  if(!sync.token || !sync.gist){ alert('Preencha o token e o ID do gist.'); return; }
+  localStorage.setItem(SKEY,JSON.stringify(sync));
+  syncNow(true).then(function(){ if(lastState.indexOf('erro')<0) alert('Conectado.'); });
+}
+function disconnectSync(){
+  if(!confirm('Desconectar este aparelho? Os dados locais continuam aqui e o gist não é apagado.')) return;
+  sync={token:'',gist:''};
+  localStorage.removeItem(SKEY);
+  document.getElementById('gToken').value='';
+  document.getElementById('gGist').value='';
+  setState('off','');
+}
+
+render();
+document.getElementById('gToken').value=sync.token;
+document.getElementById('gGist').value=sync.gist;
+setState('off','');
+if(on()) syncNow(false);
+/* ao voltar para a aba/app, puxa o que o outro aparelho registrou */
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden && on()) syncNow(false);
+});
+</script>
+</body>
+</html>
